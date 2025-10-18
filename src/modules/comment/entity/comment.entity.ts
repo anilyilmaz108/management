@@ -4,7 +4,7 @@ import { Column, DeleteDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } f
 @Entity()
 export class Comment {
   @PrimaryGeneratedColumn('increment')
-  id: string;
+  id: number;
 
   @Column()
   comment: string;
@@ -12,6 +12,4 @@ export class Comment {
   @ManyToOne(() => Post, (post) => post.comments, { onDelete: 'CASCADE' })
   post: Post;
 
-  @DeleteDateColumn({nullable:true})
-  deletedAt?:Date
 }

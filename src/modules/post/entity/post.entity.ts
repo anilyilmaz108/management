@@ -27,6 +27,4 @@ export class Post {
   @OneToMany(() => Comment, (comment) => comment.post)
   comments: Comment[];
 
-  @DeleteDateColumn({nullable:true})
-  deletedAt?:Date
 }
