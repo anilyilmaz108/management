@@ -76,9 +76,7 @@ export class PostService {
     });
 
     if (!post) {
-      throw new NotFoundException(
-        `Post with id ${id} not found`,
-      );
+      throw new NotFoundException(`Post with id ${id} not found`);
     }
 
     Object.assign(post, updateData);
@@ -97,15 +95,21 @@ export class PostService {
       where: { id },
       relations: ['user', 'comments'],
     });
-    if (!post)
-      throw new NotFoundException(
-        `Post with id ${id} not found`,
-      );
+    if (!post) throw new NotFoundException(`Post with id ${id} not found`);
 
     await this.postRepository.delete(id); // soft delete gerek yok. DBden silelim.
     await this.redisService.del(`post:${id}`);
     await this.redisService.del('posts:all'); // tüm postlar için cache’i sil
 
     return { message: `Post with id ${id} deleted` };
+  }
+
+  async search(term: string) {
+    const query = this.postRepository
+      .createQueryBuilder('post')
+      .where(`post.title LIKE :term OR post.content LIKE :term`, {
+        term: `%${term}%`,
+      });
+    return query.getMany();
   }
 }

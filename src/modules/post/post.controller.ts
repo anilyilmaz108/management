@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -48,5 +49,11 @@ export class PostController {
   @Delete('delete/:id')
   async deletePost(@Param('id') id: number) {
     return this.postService.remove(id);
+  }
+
+  @Get('search')
+  search(@Query('term') term: string) {
+    // http://localhost:5001/post/search?term=Test
+    return this.postService.search(term);
   }
 }
