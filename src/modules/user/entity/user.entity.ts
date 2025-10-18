@@ -21,13 +21,16 @@ export class User {
   @Column()
   role: number;
 
-  @Column()
-  tempRole: number;
+  @Column({ nullable: true })
+  tempRole?: number;
+
+  @Column({ nullable: true })
+  tempRoleDate?: Date;
 
   @Column()
   isActive: boolean;
 
-  @Column()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
   @OneToMany(() => Post, (post) => post.user)
