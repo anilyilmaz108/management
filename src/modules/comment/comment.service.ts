@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Post } from '../post/entity/post.entity';
 import { RedisService } from 'src/common/redis/redis.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { ConfigService } from '@nestjs/config/dist/config.service';
 
 @Injectable()
 export class CommentService {
@@ -12,9 +13,12 @@ export class CommentService {
     @InjectRepository(Comment) private commentRepository: Repository<Comment>,
     @InjectRepository(Post) private postRepository: Repository<Post>,
     private readonly redisService: RedisService,
+    private configService: ConfigService,
   ) {}
 
   async create(createCommentDto: CreateCommentDto) {
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
+
     const post = await this.postRepository.findOneBy({
       id: createCommentDto.postId,
     });
@@ -32,7 +36,7 @@ export class CommentService {
     await this.redisService.set(
       `comment:${(await savedComment).id}`,
       savedComment,
-      60,
+      ttlDefault,
     );
 
     return savedComment;
@@ -40,6 +44,7 @@ export class CommentService {
 
   async getAll(useCache = true) {
     const cacheKey = 'commments:all';
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
       const cached = await this.redisService.get(cacheKey);
@@ -48,13 +53,14 @@ export class CommentService {
 
     const comments = await this.commentRepository.find({ relations: ['post'] });
     if (useCache) {
-      await this.redisService.set(cacheKey, comments, 60); // 60 saniye cache
+      await this.redisService.set(cacheKey, comments, ttlDefault);
     }
     return comments;
   }
 
   async getCommentsByPostId(postId: number, useCache = true) {
     const cacheKey = `post:${postId}`;
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
       const cached = await this.redisService.get(cacheKey);
@@ -69,7 +75,7 @@ export class CommentService {
       throw new NotFoundException(`Comment with postId ${postId} not found`);
 
     if (useCache) {
-      await this.redisService.set(cacheKey, comments, 60);
+      await this.redisService.set(cacheKey, comments, ttlDefault);
     }
 
     return comments;

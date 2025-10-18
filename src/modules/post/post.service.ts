@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { User } from '../user/entity/user.entity';
 import { RedisService } from 'src/common/redis/redis.service';
 import { CreatePostDto } from './dto/create-post.dto';
+import { ConfigService } from '@nestjs/config/dist/config.service';
 
 @Injectable()
 export class PostService {
@@ -12,9 +13,12 @@ export class PostService {
     @InjectRepository(Post) private postRepository: Repository<Post>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly redisService: RedisService,
+    private configService: ConfigService,
   ) {}
 
   async create(createPostDto: CreatePostDto) {
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
+    
     const user = await this.userRepository.findOneBy({
       id: createPostDto.userId,
     });
@@ -27,13 +31,14 @@ export class PostService {
       user,
     });
     const savedPost = this.postRepository.save(post);
-    await this.redisService.set(`post:${(await savedPost).id}`, savedPost, 60);
+    await this.redisService.set(`post:${(await savedPost).id}`, savedPost, ttlDefault);
 
     return savedPost;
   }
 
   async getAll(useCache = true) {
     const cacheKey = 'posts:all';
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
       const cached = await this.redisService.get(cacheKey);
@@ -42,13 +47,14 @@ export class PostService {
 
     const posts = await this.postRepository.find({ relations: ['comments'] });
     if (useCache) {
-      await this.redisService.set(cacheKey, posts, 60); // 60 saniye cache
+      await this.redisService.set(cacheKey, posts, ttlDefault);
     }
     return posts;
   }
 
   async getPostsByUserId(userId: number, useCache = true) {
     const cacheKey = `post:${userId}`;
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
       const cached = await this.redisService.get(cacheKey);
@@ -63,7 +69,7 @@ export class PostService {
       throw new NotFoundException(`Post with userId ${userId} not found`);
 
     if (useCache) {
-      await this.redisService.set(cacheKey, post, 60);
+      await this.redisService.set(cacheKey, post, ttlDefault);
     }
 
     return post;

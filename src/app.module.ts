@@ -10,23 +10,17 @@ import { Comment } from './modules/comment/entity/comment.entity';
 import { UserModule } from './modules/user/user.module';
 import { PostModule } from './modules/post/post.module';
 import { CommentModule } from './modules/comment/comment.module';
+import { DatabaseConfigService } from './config/database.config';
+import cacheConfig from './config/cache.config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true, // tüm uygulamada kullanılabilir hale getirir
-      envFilePath: ['.env'], // farklı env dosyaları da tanımlayabilirsin (örn: .env.dev, .env.prod)
+  ConfigModule.forRoot({
+      isGlobal: true,
+      load: [cacheConfig], // cache config buradan global erişilebilir
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: Number(process.env.DB_PORT),
-      username: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      database: process.env.DB_NAME,
-      entities: [User, Post, Comment],
-      autoLoadEntities: true,
-      synchronize: true, // dev için
+    TypeOrmModule.forRootAsync({
+      useClass: DatabaseConfigService,
     }),
     RedisModule,
     UserModule,

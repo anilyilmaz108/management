@@ -5,28 +5,33 @@ import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { GetUserDto } from './dto/get-user.dto';
 import { RedisService } from 'src/common/redis/redis.service';
+import { ConfigService } from '@nestjs/config/dist/config.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly redisService: RedisService,
+    private configService: ConfigService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
+    
     const user = this.userRepository.create({
       ...createUserDto,
     });
     const savedUser = await this.userRepository.save(user);
 
     // Yeni kullanıcı cache'e eklenebilir
-    await this.redisService.set(`user:${savedUser.id}`, savedUser, 60);
+    await this.redisService.set(`user:${savedUser.id}`, savedUser, ttlDefault);
 
     return savedUser;
   }
 
   async getAll(useCache = true) {
     const cacheKey = 'users:all';
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
       const cached = await this.redisService.get(cacheKey);
@@ -44,7 +49,7 @@ export class UserService {
     }));
 
     if (useCache) {
-      await this.redisService.set(cacheKey, usersDto, 60); // 60 saniye cache
+      await this.redisService.set(cacheKey, usersDto, ttlDefault);
     }
 
     return usersDto;
@@ -52,6 +57,7 @@ export class UserService {
 
   async getUserById(id: number, useCache = true) {
     const cacheKey = `user:${id}`;
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
       const cached = await this.redisService.get(cacheKey);
@@ -74,13 +80,14 @@ export class UserService {
     };
 
     if (useCache) {
-      await this.redisService.set(cacheKey, userDto, 60);
+      await this.redisService.set(cacheKey, userDto, ttlDefault);
     }
 
     return userDto;
   }
 
   async update(id: number, updateData: Partial<CreateUserDto>) {
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
 
@@ -96,7 +103,7 @@ export class UserService {
     };
 
     // Cache güncelle
-    await this.redisService.set(`user:${id}`, userDto, 60);
+    await this.redisService.set(`user:${id}`, userDto, ttlDefault);
     await this.redisService.del('users:all'); // tüm kullanıcılar cache’i sil
 
     return userDto;
