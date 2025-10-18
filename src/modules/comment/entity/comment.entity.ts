@@ -9,7 +9,7 @@ export class Comment {
   @Column()
   comment: string;
 
-  @ManyToOne(() => Post, (post) => post.comments)
+  @ManyToOne(() => Post, (post) => post.comments, { onDelete: 'CASCADE' })
   post: Post;
 
   @DeleteDateColumn({nullable:true})
