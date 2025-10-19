@@ -1,5 +1,12 @@
-import { Post } from "src/modules/post/entity/post.entity";
-import { Column, DeleteDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { UserRole } from 'src/common/enum/roles.enum';
+import { Post } from 'src/modules/post/entity/post.entity';
+import {
+  Column,
+  DeleteDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity()
 export class User {
@@ -18,8 +25,11 @@ export class User {
   @Column()
   age: number;
 
-  @Column()
-  role: number;
+  @Column({
+    type: 'int',
+    default: UserRole.MUSTERI,
+  })
+  role: UserRole;
 
   @Column({ nullable: true })
   tempRole?: number;
@@ -36,7 +46,7 @@ export class User {
   @OneToMany(() => Post, (post) => post.user)
   posts: Post[];
 
-  @DeleteDateColumn({nullable: true})
+  @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
 }
 

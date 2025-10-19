@@ -42,7 +42,7 @@ export class AuthService {
     await this.redisService.set(`jwtSecret:access:${user.id}`, accessSecret, ACCESS_TOKEN_TTL);
     await this.redisService.set(`jwtSecret:refresh:${user.id}`, refreshSecret, REFRESH_TOKEN_TTL);
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
 
     // Token üret
     const accessToken = await this.jwtService.signAsync(payload, {
@@ -73,7 +73,7 @@ export class AuthService {
       await this.redisService.set(`jwtSecret:access:${userId}`, accessSecret, ACCESS_TOKEN_TTL);
 
       const newAccessToken = await this.jwtService.signAsync(
-        { sub: payload.sub, email: payload.email },
+        { sub: payload.sub, email: payload.email, role: payload.role },
         { secret: accessSecret, expiresIn: ACCESS_TOKEN_TTL },
       );
 

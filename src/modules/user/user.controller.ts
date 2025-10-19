@@ -22,6 +22,9 @@ import {
 } from '@nestjs/swagger';
 import { GetUserDto } from './dto/get-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guard/roles.guard';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { UserRole } from 'src/common/enum/roles.enum';
 
 @ApiTags('Users')
 @Controller('user')
@@ -38,7 +41,8 @@ export class UserController {
   })
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiBody({ type: CreateUserDto })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.YONETICI)
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
@@ -55,7 +59,8 @@ export class UserController {
     description: 'List of users',
     type: [GetUserDto],
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(UserRole.ADMIN, UserRole.YONETICI)
   getAllUsers(@Param('cache') cache: string) {
     const useCache = cache === 'true';
     return this.userService.getAll(useCache);
@@ -71,7 +76,8 @@ export class UserController {
   })
   @ApiResponse({ status: 200, description: 'User data', type: GetUserDto })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(UserRole.ADMIN, UserRole.YONETICI)
   getUser(@Param('id') id: number, @Param('cache') cache: string) {
     const useCache = cache === 'true';
     return this.userService.getUserById(id, useCache);
@@ -83,7 +89,8 @@ export class UserController {
   @ApiBody({ type: CreateUserDto })
   @ApiResponse({ status: 200, description: 'User updated', type: GetUserDto })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(UserRole.ADMIN, UserRole.YONETICI)
   updateUser(
     @Param('id') id: number,
     @Body() updateData: Partial<CreateUserDto>,
@@ -96,7 +103,8 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'User ID', required: true })
   @ApiResponse({ status: 200, description: 'User deleted' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.YONETICI)
   deleteUser(@Param('id') id: number) {
     return this.userService.remove(id);
   }
@@ -110,7 +118,8 @@ export class UserController {
     type: CreateUserDto,
   })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.YONETICI)
   restoreUser(@Param('id') id: number) {
     return this.userService.restore(id);
   }
