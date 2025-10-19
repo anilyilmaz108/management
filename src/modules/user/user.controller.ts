@@ -8,6 +8,7 @@ import {
   Param,
   UsePipes,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -20,8 +21,9 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { GetUserDto } from './dto/get-user.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ApiTags('users')
+@ApiTags('Users')
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -36,6 +38,7 @@ export class UserController {
   })
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiBody({ type: CreateUserDto })
+  @UseGuards(JwtAuthGuard)
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
@@ -47,7 +50,12 @@ export class UserController {
     description: 'Use cache? true/false',
     required: true,
   })
-  @ApiResponse({ status: 200, description: 'List of users', type: [GetUserDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'List of users',
+    type: [GetUserDto],
+  })
+  @UseGuards(JwtAuthGuard)
   getAllUsers(@Param('cache') cache: string) {
     const useCache = cache === 'true';
     return this.userService.getAll(useCache);
@@ -63,6 +71,7 @@ export class UserController {
   })
   @ApiResponse({ status: 200, description: 'User data', type: GetUserDto })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @UseGuards(JwtAuthGuard)
   getUser(@Param('id') id: number, @Param('cache') cache: string) {
     const useCache = cache === 'true';
     return this.userService.getUserById(id, useCache);
@@ -74,6 +83,7 @@ export class UserController {
   @ApiBody({ type: CreateUserDto })
   @ApiResponse({ status: 200, description: 'User updated', type: GetUserDto })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @UseGuards(JwtAuthGuard)
   updateUser(
     @Param('id') id: number,
     @Body() updateData: Partial<CreateUserDto>,
@@ -86,6 +96,7 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'User ID', required: true })
   @ApiResponse({ status: 200, description: 'User deleted' })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @UseGuards(JwtAuthGuard)
   deleteUser(@Param('id') id: number) {
     return this.userService.remove(id);
   }
@@ -93,8 +104,13 @@ export class UserController {
   @Patch('restore/:id')
   @ApiOperation({ summary: 'Restore soft deleted user' })
   @ApiParam({ name: 'id', description: 'User ID', required: true })
-  @ApiResponse({ status: 200, description: 'User restored', type: CreateUserDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User restored',
+    type: CreateUserDto,
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @UseGuards(JwtAuthGuard)
   restoreUser(@Param('id') id: number) {
     return this.userService.restore(id);
   }

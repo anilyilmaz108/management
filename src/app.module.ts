@@ -13,6 +13,7 @@ import { CommentModule } from './modules/comment/comment.module';
 import { DatabaseConfigService } from './config/database.config';
 import cacheConfig from './config/cache.config';
 import corsConfig from './config/cors.config';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import corsConfig from './config/cors.config';
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfigService,
     }),
+    AuthModule,
     RedisModule,
     UserModule,
     PostModule,
