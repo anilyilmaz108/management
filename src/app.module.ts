@@ -12,12 +12,13 @@ import { PostModule } from './modules/post/post.module';
 import { CommentModule } from './modules/comment/comment.module';
 import { DatabaseConfigService } from './config/database.config';
 import cacheConfig from './config/cache.config';
+import corsConfig from './config/cors.config';
 
 @Module({
   imports: [
   ConfigModule.forRoot({
       isGlobal: true,
-      load: [cacheConfig], // cache config buradan global erişilebilir
+      load: [corsConfig, cacheConfig], // cache config buradan global erişilebilir
     }),
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfigService,
