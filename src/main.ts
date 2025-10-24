@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from './config/swagger.config';
 import { ConfigService } from '@nestjs/config';
+import { WinstonLoggerService } from './logger/winston-logger.service';
 
 // docker-compose -f docker-compose.yml up -d
 // docker-compose up -d postgres redis
@@ -23,6 +24,8 @@ async function bootstrap() {
     methods: corsConfig.methods,
     credentials: corsConfig.credentials,
   });
+
+  app.useLogger(app.get(WinstonLoggerService));
 
   const doc = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('doc', app, doc);

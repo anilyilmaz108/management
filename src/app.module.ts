@@ -1,3 +1,4 @@
+import { WinstonLoggerService } from './logger/winston-logger.service';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,7 +18,7 @@ import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
-  ConfigModule.forRoot({
+    ConfigModule.forRoot({
       isGlobal: true,
       load: [corsConfig, cacheConfig], // cache config buradan global erişilebilir
     }),
@@ -31,6 +32,7 @@ import { AuthModule } from './modules/auth/auth.module';
     CommentModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [WinstonLoggerService, AppService],
+  exports: [WinstonLoggerService],
 })
 export class AppModule {}
