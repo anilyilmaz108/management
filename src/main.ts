@@ -12,6 +12,27 @@ import { WinstonLoggerService } from './logger/winston-logger.service';
 // docker ps
 // docker stop <container_id>
 
+// Docker konteynerlerini durdurmak için
+// docker-compose down
+// Docker koonteynarları build için
+// docker-compose up --build
+
+// http://localhost:9200/_cat/indices?v
+// Buradan indexleri görebiliriz
+
+// http://localhost:9200
+// Elasticsearch'e bağlanmak için
+
+// http://localhost:5601
+// Kibana arayüzüne bağlanmak için
+// Arayüze bağlandığında adımlar
+// Stack Management -> Data Views -> Create data view
+// Discover kısmından logları görebiliriz
+// Ayrıca index management kısmından indexleri yönetebiliriz
+// 1- Stack Management > Index Management > Create index pattern
+// 2- index pattern ismi olarak logstash-* yazıp next step
+// 3- Time Filter field name olarak @timestamp seçilip create index pattern
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

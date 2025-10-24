@@ -8,6 +8,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JWT_EXPIRES_IN, JWT_SECRET } from 'src/config/jwt.config';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
+import { WinstonLoggerService } from 'src/logger/winston-logger.service';
+import { ElkLogService } from 'src/logger/elk-log.service';
 
 @Module({
   imports: [
@@ -22,7 +24,7 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
     }),
     ConfigModule,
   ],
-  providers: [AuthService, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, JwtAuthGuard, RolesGuard, WinstonLoggerService, ElkLogService],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard, RolesGuard],
 })
