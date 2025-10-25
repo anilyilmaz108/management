@@ -1,3 +1,5 @@
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionsFilter } from './common/filter/exception.filter';
 import { ElkLogService } from './logger/elk-log.service';
 import { WinstonLoggerService } from './logger/winston-logger.service';
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
@@ -31,7 +33,15 @@ import { CorrelationIdMiddleware } from './common/middleware/corelation-id.middl
     CommentModule,
   ],
   controllers: [AppController],
-  providers: [ElkLogService, WinstonLoggerService, AppService],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+    ElkLogService,
+    WinstonLoggerService,
+    AppService,
+  ],
   exports: [WinstonLoggerService],
 })
 export class AppModule {

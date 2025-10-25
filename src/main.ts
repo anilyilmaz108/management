@@ -7,6 +7,7 @@ import { WinstonLoggerService } from './logger/winston-logger.service';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
 import { ErrorMaskingInterceptor } from './common/interceptor/error-masking.interceptor';
 import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
+import { AllExceptionsFilter } from './common/filter/exception.filter';
 
 // docker-compose -f docker-compose.yml up -d
 // docker-compose up -d postgres redis
@@ -55,6 +56,7 @@ async function bootstrap() {
   new TransformInterceptor(),
 );
 
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useLogger(app.get(WinstonLoggerService));
 
