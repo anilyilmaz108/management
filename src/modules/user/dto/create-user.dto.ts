@@ -8,13 +8,6 @@ export class CreateUserDto {
 
   @ApiProperty({ example: '123QWee..', description: 'Password of the user' })
   @IsString()
-  @Matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.,])[A-Za-z\d@$!%*?&.,]{8,}$/,
-      {
-        message:
-          'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character.',
-      },
-    )
   password: string;
 
   @ApiProperty({ example: 'anil@example.com', description: 'Email of the user' })
