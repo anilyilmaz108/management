@@ -20,6 +20,7 @@ import {
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { PasswordPolicyPipe } from 'src/common/pipe/password-policy.pipe';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -42,6 +43,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'User successfully logged in.' })
   @ApiResponse({ status: 401, description: 'Invalid credentials.' })
   @ApiBody({ type: LoginDto })
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60 * 1000 } })
   async login(@Body() body: { email: string; password: string }) {
     return this.authService.login(body.email, body.password);
   }

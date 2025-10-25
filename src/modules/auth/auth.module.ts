@@ -10,6 +10,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { WinstonLoggerService } from 'src/logger/winston-logger.service';
 import { ElkLogService } from 'src/logger/elk-log.service';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -21,6 +22,14 @@ import { ElkLogService } from 'src/logger/elk-log.service';
         secret: JWT_SECRET,
         signOptions: { expiresIn: JWT_EXPIRES_IN },
       }),
+    }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
     }),
     ConfigModule,
   ],
