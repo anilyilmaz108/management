@@ -1,6 +1,6 @@
 import { ElkLogService } from './logger/elk-log.service';
 import { WinstonLoggerService } from './logger/winston-logger.service';
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -13,6 +13,7 @@ import { DatabaseConfigService } from './config/database.config';
 import cacheConfig from './config/cache.config';
 import corsConfig from './config/cors.config';
 import { AuthModule } from './modules/auth/auth.module';
+import { CorrelationIdMiddleware } from './common/middleware/corelation-id.middleware';
 
 @Module({
   imports: [
@@ -33,4 +34,10 @@ import { AuthModule } from './modules/auth/auth.module';
   providers: [ElkLogService, WinstonLoggerService, AppService],
   exports: [WinstonLoggerService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(CorrelationIdMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

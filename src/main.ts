@@ -4,6 +4,9 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from './config/swagger.config';
 import { ConfigService } from '@nestjs/config';
 import { WinstonLoggerService } from './logger/winston-logger.service';
+import { TransformInterceptor } from './common/interceptor/transform.interceptor';
+import { ErrorMaskingInterceptor } from './common/interceptor/error-masking.interceptor';
+import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 
 // docker-compose -f docker-compose.yml up -d
 // docker-compose up -d postgres redis
@@ -45,6 +48,13 @@ async function bootstrap() {
     methods: corsConfig.methods,
     credentials: corsConfig.credentials,
   });
+
+  app.useGlobalInterceptors(
+  new LoggingInterceptor(),
+  new ErrorMaskingInterceptor(),
+  new TransformInterceptor(),
+);
+
 
   app.useLogger(app.get(WinstonLoggerService));
 
