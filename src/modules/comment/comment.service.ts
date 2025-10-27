@@ -1,30 +1,28 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Comment } from './entity/comment.entity';
 import { Repository } from 'typeorm';
+import { Comment } from './entity/comment.entity';
 import { Post } from '../post/entity/post.entity';
 import { RedisService } from 'src/common/redis/redis.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { ConfigService } from '@nestjs/config/dist/config.service';
+import { RedisKeys } from 'src/common/redis/redis-keys.helper';
 
 @Injectable()
 export class CommentService {
   constructor(
-    @InjectRepository(Comment) private commentRepository: Repository<Comment>,
-    @InjectRepository(Post) private postRepository: Repository<Post>,
+    @InjectRepository(Comment) private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(Post) private readonly postRepository: Repository<Post>,
     private readonly redisService: RedisService,
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {}
 
   async create(createCommentDto: CreateCommentDto) {
     const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
-    const post = await this.postRepository.findOneBy({
-      id: createCommentDto.postId,
-    });
-
+    const post = await this.postRepository.findOneBy({ id: createCommentDto.postId });
     if (!post) {
-      throw new NotFoundException('Post Not Found');
+      throw new NotFoundException('Post not found');
     }
 
     const comment = this.commentRepository.create({
@@ -32,18 +30,19 @@ export class CommentService {
       post,
     });
 
-    const savedComment = this.commentRepository.save(comment);
-    await this.redisService.set(
-      `comment:${(await savedComment).id}`,
-      savedComment,
-      ttlDefault,
-    );
+    const savedComment = await this.commentRepository.save(comment);
+
+    const commentKey = RedisKeys.comment.byId(savedComment.id);
+    const commentListKey = RedisKeys.comment.all();
+
+    await this.redisService.set(commentKey, savedComment, ttlDefault);
+    await this.redisService.del(commentListKey); // liste cache’ini temizle
 
     return savedComment;
   }
 
   async getAll(useCache = true) {
-    const cacheKey = 'commments:all';
+    const cacheKey = RedisKeys.comment.all();
     const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
@@ -52,14 +51,16 @@ export class CommentService {
     }
 
     const comments = await this.commentRepository.find({ relations: ['post'] });
+
     if (useCache) {
       await this.redisService.set(cacheKey, comments, ttlDefault);
     }
+
     return comments;
   }
 
   async getCommentsByPostId(postId: number, useCache = true) {
-    const cacheKey = `post:${postId}`;
+    const cacheKey = RedisKeys.comment.byPost(postId);
     const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
@@ -71,8 +72,10 @@ export class CommentService {
       where: { post: { id: postId } },
       relations: ['post'],
     });
-    if (!comments)
-      throw new NotFoundException(`Comment with postId ${postId} not found`);
+
+    if (!comments || comments.length === 0) {
+      throw new NotFoundException(`Comments for postId ${postId} not found`);
+    }
 
     if (useCache) {
       await this.redisService.set(cacheKey, comments, ttlDefault);
@@ -82,22 +85,23 @@ export class CommentService {
   }
 
   async update(id: number, updateData: Partial<CreateCommentDto>) {
-    const commment = await this.commentRepository.findOne({
+    const comment = await this.commentRepository.findOne({
       where: { id },
       relations: ['post'],
     });
 
-    if (!commment) {
-      throw new NotFoundException(`Commment with id ${id} not found`);
+    if (!comment) {
+      throw new NotFoundException(`Comment with id ${id} not found`);
     }
 
-    Object.assign(commment, updateData);
+    Object.assign(comment, updateData);
+    const updatedComment = await this.commentRepository.save(comment);
 
-    const updatedComment = await this.commentRepository.save(commment);
+    const commentKey = RedisKeys.comment.byId(id);
+    const commentListKey = RedisKeys.comment.all();
 
-    // Cache key kullanıcıya bağlı
-    const cacheKey = `comment:${id}`;
-    await this.redisService.del(cacheKey); // cache'i temizle
+    await this.redisService.set(commentKey, updatedComment, this.configService.get<number>('cache.ttlDefault'));
+    await this.redisService.del(commentListKey); // liste cache’ini temizle
 
     return updatedComment;
   }
@@ -107,12 +111,18 @@ export class CommentService {
       where: { id },
       relations: ['post'],
     });
-    if (!comment)
-      throw new NotFoundException(`Comment with id ${id} not found`);
 
-    await this.commentRepository.delete(id); // soft delete gerek yok. DBden silelim.
-    await this.redisService.del(`comment:${id}`);
-    await this.redisService.del('comments:all'); // tüm postlar için cache’i sil
+    if (!comment) {
+      throw new NotFoundException(`Comment with id ${id} not found`);
+    }
+
+    await this.commentRepository.delete(id);
+
+    const commentKey = RedisKeys.comment.byId(id);
+    const commentListKey = RedisKeys.comment.all();
+
+    await this.redisService.del(commentKey);
+    await this.redisService.del(commentListKey);
 
     return { message: `Comment with id ${id} deleted` };
   }

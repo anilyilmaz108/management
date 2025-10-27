@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config/dist/config.service';
 import { WinstonLoggerService } from 'src/logger/winston-logger.service';
 import { ElkLogService, LOGLEVELS } from 'src/logger/elk-log.service';
+import { RedisKeys } from 'src/common/redis/redis-keys.helper';
 
 @Injectable()
 export class AuthService {
@@ -30,18 +31,16 @@ export class AuthService {
         password: hashedPassword,
       });
 
-      // Log info
       this.logger.log(
         `Registering user with email: ${createUserDto.email}`,
-        'AuthService',
+        AuthService.name,
       );
 
       return this.userRepository.save(user);
     } catch (error) {
-      // Log error
       this.logger.error(
         `Register failed for ${createUserDto.email}: ${error.message}`,
-        'AuthService',
+        AuthService.name,
       );
       throw error;
     }
@@ -49,28 +48,18 @@ export class AuthService {
 
   async login(email: string, password: string) {
     try {
-      const ACCESS_TOKEN_TTL = this.configService.get<number>(
-        'cache.ACCESS_TOKEN_TTL',
-      );
-      const REFRESH_TOKEN_TTL = this.configService.get<number>(
-        'cache.REFRESH_TOKEN_TTL',
-      );
+      const ACCESS_TOKEN_TTL = this.configService.get<number>('cache.ACCESS_TOKEN_TTL');
+      const REFRESH_TOKEN_TTL = this.configService.get<number>('cache.REFRESH_TOKEN_TTL');
 
       const user = await this.userRepository.findOne({ where: { email } });
       if (!user) {
-        this.logger.warn(
-          `Login failed: User not found (${email})`,
-          'AuthService',
-        );
+        this.logger.warn(`Login failed: User not found (${email})`, AuthService.name);
         throw new UnauthorizedException('User not found');
       }
 
       const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) {
-        this.logger.warn(
-          `Login failed: Invalid credentials (${email})`,
-          'AuthService',
-        );
+        this.logger.warn(`Login failed: Invalid credentials (${email})`, AuthService.name);
         throw new UnauthorizedException('Invalid credentials');
       }
 
@@ -78,17 +67,13 @@ export class AuthService {
       const accessSecret = randomBytes(64).toString('hex');
       const refreshSecret = randomBytes(64).toString('hex');
 
+      // Redis key’leri merkezi yerden al
+      const accessKey = RedisKeys.jwt.access(user.id);
+      const refreshKey = RedisKeys.jwt.refresh(user.id);
+
       // Redis’e kaydet
-      await this.redisService.set(
-        `jwtSecret:access:${user.id}`,
-        accessSecret,
-        ACCESS_TOKEN_TTL,
-      );
-      await this.redisService.set(
-        `jwtSecret:refresh:${user.id}`,
-        refreshSecret,
-        REFRESH_TOKEN_TTL,
-      );
+      await this.redisService.set(accessKey, accessSecret, ACCESS_TOKEN_TTL);
+      await this.redisService.set(refreshKey, refreshSecret, REFRESH_TOKEN_TTL);
 
       const payload = { sub: user.id, email: user.email, role: user.role };
 
@@ -103,57 +88,34 @@ export class AuthService {
         expiresIn: REFRESH_TOKEN_TTL,
       });
 
-      // Log successful login
-      // winston logger -> file içine yazar
-      this.logger.log(`User logged in: ${email}`, 'AuthService');
-      // ELK logger -> logstash'e yazar
-      this.elkLogger.log(
-        `User logged in: ${email}`,
-        AuthService.name,
-        LOGLEVELS.INFO,
-      );
+      // Loglama
+      this.logger.log(`User logged in: ${email}`, AuthService.name);
+      this.elkLogger.log(`User logged in: ${email}`, AuthService.name, LOGLEVELS.INFO);
 
       return { accessToken, refreshToken };
     } catch (error) {
-      this.logger.error(
-        `Login error for ${email}: ${error.message}`,
-        'AuthService',
-      );
-      this.elkLogger.log(
-        `Login error for ${email}: ${error.message}`,
-        AuthService.name,
-        LOGLEVELS.ERROR,
-      );
+      this.logger.error(`Login error for ${email}: ${error.message}`, AuthService.name);
+      this.elkLogger.log(`Login error for ${email}: ${error.message}`, AuthService.name, LOGLEVELS.ERROR);
       throw error;
     }
   }
 
   async refresh(userId: number, refreshToken: string) {
-    const ACCESS_TOKEN_TTL = this.configService.get<number>(
-      'cache.ACCESS_TOKEN_TTL',
-    );
-    const REFRESH_TOKEN_TTL = this.configService.get<number>(
-      'cache.REFRESH_TOKEN_TTL',
-    );
+    const ACCESS_TOKEN_TTL = this.configService.get<number>('cache.ACCESS_TOKEN_TTL');
+    const REFRESH_TOKEN_TTL = this.configService.get<number>('cache.REFRESH_TOKEN_TTL');
 
-    const refreshSecret = await this.redisService.get(
-      `jwtSecret:refresh:${userId}`,
-    );
-    if (!refreshSecret)
-      throw new UnauthorizedException('Refresh token expired');
+    const refreshKey = RedisKeys.jwt.refresh(userId);
+    const refreshSecret = await this.redisService.get(refreshKey);
+    if (!refreshSecret) throw new UnauthorizedException('Refresh token expired');
 
     try {
-      const payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: refreshSecret,
-      });
+      const payload = await this.jwtService.verifyAsync(refreshToken, { secret: refreshSecret });
 
       // Yeni access token üret
       const accessSecret = randomBytes(64).toString('hex');
-      await this.redisService.set(
-        `jwtSecret:access:${userId}`,
-        accessSecret,
-        ACCESS_TOKEN_TTL,
-      );
+      const accessKey = RedisKeys.jwt.access(userId);
+
+      await this.redisService.set(accessKey, accessSecret, ACCESS_TOKEN_TTL);
 
       const newAccessToken = await this.jwtService.signAsync(
         { sub: payload.sub, email: payload.email, role: payload.role },
@@ -167,8 +129,12 @@ export class AuthService {
   }
 
   async logout(userId: number) {
-    await this.redisService.del(`jwtSecret:access:${userId}`);
-    await this.redisService.del(`jwtSecret:refresh:${userId}`);
+    const accessKey = RedisKeys.jwt.access(userId);
+    const refreshKey = RedisKeys.jwt.refresh(userId);
+
+    await this.redisService.del(accessKey);
+    await this.redisService.del(refreshKey);
+
     return { message: 'Logged out successfully' };
   }
 }

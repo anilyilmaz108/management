@@ -1,43 +1,50 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Post } from './entity/post.entity';
 import { Repository } from 'typeorm';
+import { Post } from './entity/post.entity';
 import { User } from '../user/entity/user.entity';
 import { RedisService } from 'src/common/redis/redis.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { ConfigService } from '@nestjs/config/dist/config.service';
+import { RedisKeys } from 'src/common/redis/redis-keys.helper';
 
 @Injectable()
 export class PostService {
   constructor(
-    @InjectRepository(Post) private postRepository: Repository<Post>,
-    @InjectRepository(User) private userRepository: Repository<User>,
+    @InjectRepository(Post) private readonly postRepository: Repository<Post>,
+    @InjectRepository(User) private readonly userRepository: Repository<User>,
     private readonly redisService: RedisService,
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {}
 
   async create(createPostDto: CreatePostDto) {
     const ttlDefault = this.configService.get<number>('cache.ttlDefault');
-    
-    const user = await this.userRepository.findOneBy({
-      id: createPostDto.userId,
-    });
+
+    const user = await this.userRepository.findOneBy({ id: createPostDto.userId });
     if (!user) {
-      throw new NotFoundException('User Not Found');
+      throw new NotFoundException('User not found');
     }
+
     const post = this.postRepository.create({
       title: createPostDto.title,
       content: createPostDto.content,
       user,
     });
-    const savedPost = this.postRepository.save(post);
-    await this.redisService.set(`post:${(await savedPost).id}`, savedPost, ttlDefault);
+
+    const savedPost = await this.postRepository.save(post);
+
+    // Cache key’leri merkezi RedisKeys yapısından al
+    const postKey = RedisKeys.post.byId(savedPost.id);
+    const postListKey = RedisKeys.post.all();
+
+    await this.redisService.set(postKey, savedPost, ttlDefault);
+    await this.redisService.del(postListKey); // liste cache’ini temizle
 
     return savedPost;
   }
 
   async getAll(useCache = true) {
-    const cacheKey = 'posts:all';
+    const cacheKey = RedisKeys.post.all();
     const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
@@ -46,14 +53,16 @@ export class PostService {
     }
 
     const posts = await this.postRepository.find({ relations: ['comments'] });
+
     if (useCache) {
       await this.redisService.set(cacheKey, posts, ttlDefault);
     }
+
     return posts;
   }
 
   async getPostsByUserId(userId: number, useCache = true) {
-    const cacheKey = `post:${userId}`;
+    const cacheKey = `${RedisKeys.post.byId(`user:${userId}`)}`;
     const ttlDefault = this.configService.get<number>('cache.ttlDefault');
 
     if (useCache) {
@@ -61,21 +70,25 @@ export class PostService {
       if (cached) return cached;
     }
 
-    const post = await this.postRepository.find({
+    const posts = await this.postRepository.find({
       where: { user: { id: userId } },
       relations: ['comments'],
     });
-    if (!post)
-      throw new NotFoundException(`Post with userId ${userId} not found`);
 
-    if (useCache) {
-      await this.redisService.set(cacheKey, post, ttlDefault);
+    if (!posts || posts.length === 0) {
+      throw new NotFoundException(`Posts for user ${userId} not found`);
     }
 
-    return post;
+    if (useCache) {
+      await this.redisService.set(cacheKey, posts, ttlDefault);
+    }
+
+    return posts;
   }
 
   async update(id: number, updateData: Partial<CreatePostDto>) {
+    const ttlDefault = this.configService.get<number>('cache.ttlDefault');
+
     const post = await this.postRepository.findOne({
       where: { id },
       relations: ['user', 'comments'],
@@ -86,12 +99,13 @@ export class PostService {
     }
 
     Object.assign(post, updateData);
-
     const updatedPost = await this.postRepository.save(post);
 
-    // Cache key kullanıcıya bağlı
-    const cacheKey = `post:${id}`;
-    await this.redisService.del(cacheKey); // cache'i temizle
+    const postKey = RedisKeys.post.byId(id);
+    const postListKey = RedisKeys.post.all();
+
+    await this.redisService.set(postKey, updatedPost, ttlDefault);
+    await this.redisService.del(postListKey); // liste cache’ini temizle
 
     return updatedPost;
   }
@@ -101,21 +115,26 @@ export class PostService {
       where: { id },
       relations: ['user', 'comments'],
     });
-    if (!post) throw new NotFoundException(`Post with id ${id} not found`);
 
-    await this.postRepository.delete(id); // soft delete gerek yok. DBden silelim.
-    await this.redisService.del(`post:${id}`);
-    await this.redisService.del('posts:all'); // tüm postlar için cache’i sil
+    if (!post) {
+      throw new NotFoundException(`Post with id ${id} not found`);
+    }
+
+    await this.postRepository.delete(id);
+
+    const postKey = RedisKeys.post.byId(id);
+    const postListKey = RedisKeys.post.all();
+
+    await this.redisService.del(postKey);
+    await this.redisService.del(postListKey);
 
     return { message: `Post with id ${id} deleted` };
   }
 
   async search(term: string) {
-    const query = this.postRepository
+    return this.postRepository
       .createQueryBuilder('post')
-      .where(`post.title LIKE :term OR post.content LIKE :term`, {
-        term: `%${term}%`,
-      });
-    return query.getMany();
+      .where(`post.title LIKE :term OR post.content LIKE :term`, { term: `%${term}%` })
+      .getMany();
   }
 }

@@ -13,6 +13,7 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers['authorization'];
+    const appPrefix = 'management';
 
     if (!authHeader) throw new UnauthorizedException('Authorization header missing');
 
@@ -30,7 +31,7 @@ export class JwtAuthGuard implements CanActivate {
       const userId = decoded.sub;
 
       // Redis'ten bu kullanıcının access secret'ını al
-      const accessSecret = await this.redisService.get(`jwtSecret:access:${userId}`);
+      const accessSecret = await this.redisService.get(`${appPrefix}:jwtSecret:access:${userId}`);
       
       if (!accessSecret) {
         throw new UnauthorizedException('Token expired or revoked');
