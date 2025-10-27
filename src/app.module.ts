@@ -1,3 +1,4 @@
+import { RedisCleanupService } from './schedule/redis-cleanup.service';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filter/exception.filter';
 import { ElkLogService } from './logger/elk-log.service';
@@ -16,9 +17,12 @@ import cacheConfig from './config/cache.config';
 import corsConfig from './config/cors.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { CorrelationIdMiddleware } from './common/middleware/corelation-id.middleware';
+import { ScheduleModule } from '@nestjs/schedule';
+import { RedisCleanerScheduleModule } from './schedule/redis-cleaner-schedule.module';
 
 @Module({
   imports: [
+    RedisCleanerScheduleModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [corsConfig, cacheConfig], // cache config buradan global erişilebilir
@@ -26,6 +30,7 @@ import { CorrelationIdMiddleware } from './common/middleware/corelation-id.middl
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfigService,
     }),
+    ScheduleModule.forRoot({}),
     AuthModule,
     RedisModule,
     UserModule,
@@ -34,6 +39,7 @@ import { CorrelationIdMiddleware } from './common/middleware/corelation-id.middl
   ],
   controllers: [AppController],
   providers: [
+    RedisCleanupService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
