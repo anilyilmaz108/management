@@ -1,3 +1,7 @@
+import { QueueModule } from './queues/queue.module';
+import { SmsModule } from './queues/sms/sms.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { MailModule } from './queues/mail/mail.module';
 import { RedisCleanupService } from './schedule/redis-cleanup.service';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filter/exception.filter';
@@ -19,9 +23,14 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CorrelationIdMiddleware } from './common/middleware/corelation-id.middleware';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RedisCleanerScheduleModule } from './schedule/redis-cleaner-schedule.module';
+import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
+    QueueModule,
+    SmsModule,
+    AdminModule,
+    MailModule,
     RedisCleanerScheduleModule,
     ConfigModule.forRoot({
       isGlobal: true,
@@ -29,6 +38,17 @@ import { RedisCleanerScheduleModule } from './schedule/redis-cleaner-schedule.mo
     }),
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfigService,
+    }),
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+      defaultJobOptions: {
+        attempts: 3,
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
     }),
     ScheduleModule.forRoot({}),
     AuthModule,

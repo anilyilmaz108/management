@@ -8,7 +8,11 @@ import { TransformInterceptor } from './common/interceptor/transform.interceptor
 import { ErrorMaskingInterceptor } from './common/interceptor/error-masking.interceptor';
 import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 import { AllExceptionsFilter } from './common/filter/exception.filter';
-
+import { getQueueToken } from '@nestjs/bull';
+import type { Queue } from 'bull';
+import { ExpressAdapter } from '@bull-board/express';
+import { createBullBoard } from '@bull-board/api';
+import { BullAdapter } from '@bull-board/api/bullAdapter';
 // docker-compose -f docker-compose.yml up -d
 // docker-compose up -d postgres redis
 
@@ -51,10 +55,10 @@ async function bootstrap() {
   });
 
   app.useGlobalInterceptors(
-  new LoggingInterceptor(),
-  new ErrorMaskingInterceptor(),
-  new TransformInterceptor(),
-);
+    new LoggingInterceptor(),
+    new ErrorMaskingInterceptor(),
+    new TransformInterceptor(),
+  );
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
@@ -62,6 +66,19 @@ async function bootstrap() {
 
   const doc = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('doc', app, doc);
+
+  const emailQueue: Queue = app.get(getQueueToken('email'));
+  const smsQueue: Queue = app.get(getQueueToken('sms'));
+
+  const serverAdapter = new ExpressAdapter();
+  serverAdapter.setBasePath('/admin/queues');
+  createBullBoard({
+    queues: [new BullAdapter(emailQueue), new BullAdapter(smsQueue)],
+    serverAdapter,
+  });
+
+  app.use('/admin/queues', serverAdapter.getRouter());
+
   await app.listen(process.env.PORT ?? 5001);
 }
 bootstrap();

@@ -14,6 +14,10 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
 
+  @ApiProperty({ example: '+905556667788', description: 'Phone of the user' })
+  @IsString()
+  phone: string;
+
   @ApiProperty({ example: 27, description: 'Age of the user' })
   @IsInt()
   @Min(0)

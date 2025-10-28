@@ -23,6 +23,9 @@ export class User {
   email: string;
 
   @Column()
+  phone: string;
+
+  @Column()
   age: number;
 
   @Column({
