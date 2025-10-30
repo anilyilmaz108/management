@@ -41,6 +41,11 @@ import { BullAdapter } from '@bull-board/api/bullAdapter';
 // 2- index pattern ismi olarak logstash-* yazıp next step
 // 3- Time Filter field name olarak @timestamp seçilip create index pattern
 
+// Cloud Storage kullanımı + Multer
+// Multer ile dosya yükleme ve Cloud storage için frontendde işlemleri yapıp
+// En son Url sini backende atabiliriz.
+// İhtiyaç durumunda backendde de multer ile dosya yükleme işlemi yapılabilir.
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
