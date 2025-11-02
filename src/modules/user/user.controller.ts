@@ -76,7 +76,7 @@ export class UserController {
   })
   @ApiResponse({ status: 200, description: 'User data', type: GetUserDto })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles(UserRole.ADMIN, UserRole.YONETICI)
   getUser(@Param('id') id: number, @Param('cache') cache: string) {
     const useCache = cache === 'true';

@@ -1,4 +1,5 @@
 import { UserRole } from 'src/common/enum/roles.enum';
+import { MessageEntity } from 'src/gateway/chat/entity/message.entity';
 import { Post } from 'src/modules/post/entity/post.entity';
 import {
   Column,
@@ -45,6 +46,12 @@ export class User {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
+
+  @OneToMany(() => MessageEntity, (message) => message.sender)
+  sentMessages: MessageEntity[];
+
+  @OneToMany(() => MessageEntity, (message) => message.receiver)
+  receivedMessages: MessageEntity[];
 
   @OneToMany(() => Post, (post) => post.user)
   posts: Post[];

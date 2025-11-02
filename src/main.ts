@@ -54,10 +54,17 @@ async function bootstrap() {
   const corsConfig = configService.get('cors');
 
   app.enableCors({
+    origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'null', '*'], // local test için
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  });
+
+  /**  app.enableCors({
     origin: corsConfig.origins,
     methods: corsConfig.methods,
     credentials: corsConfig.credentials,
-  });
+  }); */
 
   app.useGlobalInterceptors(
     new LoggingInterceptor(),

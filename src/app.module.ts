@@ -1,3 +1,6 @@
+import { ChatModule } from './gateway/chat/chat.module';
+import { ChatGateway } from './gateway/chat/chat.gateway';
+import { ChatService } from './gateway/chat/chat.service';
 import { QueueModule } from './queues/queue.module';
 import { SmsModule } from './queues/sms/sms.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -27,6 +30,7 @@ import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
+    ChatModule,
     QueueModule,
     SmsModule,
     AdminModule,
@@ -59,6 +63,7 @@ import { BullModule } from '@nestjs/bull';
   ],
   controllers: [AppController],
   providers: [
+    ChatGateway,
     RedisCleanupService,
     {
       provide: APP_FILTER,

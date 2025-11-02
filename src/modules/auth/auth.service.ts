@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config/dist/config.service';
 import { WinstonLoggerService } from 'src/logger/winston-logger.service';
 import { ElkLogService, LOGLEVELS } from 'src/logger/elk-log.service';
 import { RedisKeys } from 'src/common/redis/redis-keys.helper';
+import { JWT_SECRET } from 'src/config/jwt.config';
 
 @Injectable()
 export class AuthService {
@@ -64,7 +65,7 @@ export class AuthService {
       }
 
       // Dinamik secret üret
-      const accessSecret = randomBytes(64).toString('hex');
+      const accessSecret = JWT_SECRET; //randomBytes(64).toString('hex');
       const refreshSecret = randomBytes(64).toString('hex');
 
       // Redis key’leri merkezi yerden al
@@ -79,7 +80,7 @@ export class AuthService {
 
       // Token üret
       const accessToken = await this.jwtService.signAsync(payload, {
-        secret: accessSecret,
+        secret: JWT_SECRET,
         expiresIn: ACCESS_TOKEN_TTL,
       });
 
